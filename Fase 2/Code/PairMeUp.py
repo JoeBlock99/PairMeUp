@@ -17,8 +17,9 @@ from neo4j import GraphDatabase
 
 driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "admin"))
 
-def crearUsuario(tx, user, age, sexualGender, typeFood, sexPreference, musicalGenre, favEntertainment, religion, movieGenre, ocupation, faq):
-    tx.run("""CREATE
+def crearUsuario(tx, user, age, sexualGender, typeFood, sexPreference, musicalGenre, favEntertainment, religion, movieGenre, ocupation, faq, beverage, secondLanguage):
+    tx.run("""Merge
+            ($user:Persona{Correo: $user}),
             ($user)-[:TIENE]->($age),
             ($user)-[:ES]->($sexoEs),
             ($user)-[:COME]->($comida),
@@ -28,9 +29,11 @@ def crearUsuario(tx, user, age, sexualGender, typeFood, sexPreference, musicalGe
             ($user)-[:CREE]->($creencia),
             ($user)-[:VE]->($genero),
             ($user)-[:LABOR]->($EstudianteTrabajador),
-            ($user)-[:ESTUDIA]->($faq)
+            ($user)-[:ESTUDIA]->($faq),
             ($user)-[:ESPERA]->($tipoRelacion),
-            ($user)-[:HABLA]->($idioma),""", user= user, age=age, sexoEs=sexualGender, comida=typeFood, sexoBusca=sexPreference, musica = musicalGenre, algo = favEntertainment, creencia = religion, genero = movieGenre, EstudianteTrabajador = ocupation, faq = faq, tipoRelacion = beverage, idioma = secondLanguage)
+            ($user)-[:HABLA]->($idioma)
+            """,
+            user= user, age=age, sexoEs=sexualGender, comida=typeFood, sexoBusca=sexPreference, musica = musicalGenre, algo = favEntertainment, creencia = religion, genero = movieGenre, EstudianteTrabajador = ocupation, faq = faq, tipoRelacion = beverage, idioma = secondLanguage)
 
 
 def getMatch(tx, user):
@@ -43,9 +46,15 @@ def getMatch(tx, user):
         """, correo = user):
         print("----------------------")
         print(usuarioMatch["algunUsuario.Correo"])
-
-
-
+def getMatchB(tx, user):
+    for usuarioMatch in tx.run("""
+        match (user:Persona) Where user.Correo = $correo
+        match (algunUsuario)-[:BUSCA]->(:Sexo)<-[:ES]-(user)
+        optional match (user)-[:ESPERA]-> (:Buscando)<-[:ESPERA]-(algunUsuario)
+        return algunUsuario.Correo
+        """, correo = user):
+        print("----------------------")
+        print(usuarioMatch["algunUsuario.Correo"])
 
 user = "user"
 #password = "password"
@@ -66,13 +75,11 @@ while wantsTocontinuar == True:
 
         if (val == 1):
             user = input("Ingrese su correo: ")
-            #password = input("Ingrese su contraseña: ")
-
-
 
             ##  Guardar esta información en la base de datos!
 
             ##  Empezar a hacer las preguntas y guardar las respuestas en una base de datos!
+
             print("Ingrese el número de la respuesta de las siguientes preguntas: \n")
 
             ##  Con cada preginta verificar que la respuesta esté en el rango de las respuestas, sinó, tirar error y repetir la pregunta, si sí
@@ -97,7 +104,7 @@ while wantsTocontinuar == True:
 
             continuar = False
             while continuar == False:
-                print("¿Qué sexo le atrae? \n1. Masculino \n2. Femenino \n3. Ambos \n")
+                print("¿Qué sexo le atrae? \n1. Masculino \n2. Femenino \n")
                 sexPreference = input("Respuesta: ")
                 print(" ")
 
@@ -109,8 +116,7 @@ while wantsTocontinuar == True:
                     sexPreference = "Femenino"
                     continuar = True
 
-                elif sexPreference == "3":
-                    sexPreference = "Ambos"
+
 
                 else:
                     print("Ingrese unas opci[on valida!")
@@ -294,7 +300,7 @@ while wantsTocontinuar == True:
 
             continuar = False
             while continuar == False:
-                print("¿Qué quiere llegar a ser con su match? \n1. Relación \n2. Conocer \n3. Ambos \n")
+                print("¿Qué quiere llegar a ser con su match? \n1. Relación \n2. Conocer\n")
                 beverage = input("Respuesta: ")
                 print(" ")
 
@@ -306,15 +312,11 @@ while wantsTocontinuar == True:
                     beverage = "Conocer"
                     continuar = True
 
-                elif beverage == "3":
-                    beverage = "Ambo"
-                    continuar = True
-
                 else:
                     print("Ingrese unas opci[on valida!")
 
 
-            continuar == False
+            continuar = False
             while continuar == False:
                 print("¿Cuál es la actividad que más hace en su tiempo libre? \n1. Jugar videojuegos \n2. Ver television \n3. Leer \n4. Arte \n5. Hacer deporte \n6. Salir con amigos y amigas \n")
                 favEntertainment = input("Respuesta: ")
@@ -350,7 +352,7 @@ while wantsTocontinuar == True:
 
             continuar = False
             while continuar == False:
-                print("¿En qué se ocupa en cuestiones de labor? \n1. Estudio \n2. Trabajo \n3. Ambos \n")
+                print("¿En qué se ocupa en cuestiones de labor? \n1. Estudio \n2. Trabajo \n3. Ambos\n")
                 ocupation = input("Respuesta: ")
                 print(" ")
 
@@ -365,6 +367,7 @@ while wantsTocontinuar == True:
                 elif ocupation == "3":
                     ocupation = "EstudianteTrabajador"
                     continuar = True
+
 
                 else:
                     print("Ingrese unas opci[on valida!")
@@ -435,17 +438,17 @@ while wantsTocontinuar == True:
 
                 else:
                     print("Ingrese unas opci[on valida!")
-
-
-            driver.session().write_transaction(crearUsuario, user, age, sexualGender, typeFood, sexPreference, musicalGenre, favEntertainment, religion, movieGenre, ocupation, faq)
-
+                    if sexPreference == "3":
+                        driver.session().write_transaction(crearUsuario, user, age, sexualGender, typeFood, sexPreference, musicalGenre, favEntertainment, religion, movieGenre, ocupation, faq, beverage, secondLanguage)
+                        driver.session().write_transaction(getMatchB, user)
+                    else:
+                        driver.session().write_transaction(crearUsuario, user, age, sexualGender, typeFood, sexPreference, musicalGenre, favEntertainment, religion, movieGenre, ocupation, faq, beverage, secondLanguage)
+                        driver.session().write_transaction(getMatch, user)
 
             ##  Una vez ya se hayan respondido las preguntas de forma correcta, imprimir el mismo menú que les aparecerá a los usuarios que hayan iniciado sesión.
+
             print(menu)
             action = input("Ingrese la opción que desea realizar: ")
-
-            #
-            #
 
         elif (val == 2):
             ##  Pedir los datos para el log in
@@ -453,7 +456,6 @@ while wantsTocontinuar == True:
             password = input("Ingrese su contraseña: ")
 
             ##  Verificar si esta información existe, si existe presentar menú, y si no existe mostrar error y volver a preguntar datos
-
             isLoggedIn = True
 
             while (isLoggedIn == True):
@@ -465,12 +467,7 @@ while wantsTocontinuar == True:
 
                     if (action == "1"):
                         print("Sus matches son: ")
-                        # LOGICA DE RECOMEDACION:
-
-
                         driver.session().read_transaction(getMatch, user)
-
-
 
                     elif (action == "2"):
                         isLoggedIn = False
@@ -482,11 +479,12 @@ while wantsTocontinuar == True:
                 except ValueError:
                     print("Por favor ingrese números! \n")
 
-        elif (val == "3"):
+        elif (val == 3):
             wantsTocontinuar = False
 
         else:
             print("Por favor ingrese una opción válida\n")
+
     except ValueError:
         print("Por favor ingrese números!\n")
 
